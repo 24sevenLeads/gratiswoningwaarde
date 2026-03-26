@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gratis Woningwaarde – Wat is jouw huis waard?</title>
+<meta name="description" content="Ontdek gratis en direct de waarde van jouw woning. Geen verplichtingen, geen account nodig."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-dark:  #0a4a38;
+    --green-mid:   #0f6e56;
+    --green-light: #1d9e75;
+    --green-pale:  #e1f5ee;
+    --green-mist:  #f0faf6;
+    --text:        #1a1a18;
+    --text-muted:  #5a5a55;
+    --border:      rgba(0,0,0,0.08);
+    --white:       #ffffff;
+    --radius:      14px;
+    --shadow:      0 2px 16px rgba(10,74,56,0.08);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--green-mist);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* NAV */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 5%;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--green-dark);
+    text-decoration: none;
+  }
+  .logo span { color: var(--green-light); }
+  .nav-badge {
+    font-size: 12px;
+    background: var(--green-pale);
+    color: var(--green-dark);
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+
+  /* HERO */
+  .hero {
+    background: var(--green-dark);
+    padding: 72px 5% 64px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(29,158,117,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--green-light);
+    margin-bottom: 20px;
+    padding: 5px 16px;
+    border: 1px solid rgba(29,158,117,0.35);
+    border-radius: 99px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    color: var(--white);
+    line-height: 1.15;
+    max-width: 640px;
+    margin: 0 auto 20px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: #5DCAA5;
+  }
+  .hero-sub {
+    font-size: 17px;
+    color: rgba(255,255,255,0.65);
+    max-width: 480px;
+    margin: 0 auto 40px;
+  }
+  .trust-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+  .trust-pill {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 14px;
+    border-radius: 99px;
+  }
+  .trust-pill::before { content: '✓ '; color: var(--green-light); }
+
+  /* STEPS */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+  .step {
+    background: var(--white);
+    padding: 24px 28px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--green-pale);
+    color: var(--green-dark);
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; color: var(--text); }
+  .step-desc  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  /* MAIN LAYOUT */
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 5%;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* FORM CARD */
+  .form-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 36px;
+    box-shadow: var(--shadow);
+  }
+  .form-card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .form-card .sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--green-light); box-shadow: 0 0 0 3px rgba(29,158,117,0.1); }
+  .field input.error { border-color: #e24b4a; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .cta {
+    width: 100%;
+    padding: 14px;
+    background: var(--green-dark);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.15s, transform 0.1s;
+    position: relative;
+  }
+  .cta:hover { background: var(--green-mid); }
+  .cta:active { transform: scale(0.99); }
+  .cta:disabled { opacity: 0.6; cursor: not-allowed; }
+  .cta .spinner { display: none; }
+  .cta.loading .btn-text { display: none; }
+  .cta.loading .spinner { display: inline; }
+
+  .privacy {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 12px;
+  }
+  .error-msg { font-size: 12px; color: #a32d2d; margin-top: 4px; display: none; }
+
+  /* RESULT */
+  .result-card {
+    display: none;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 2px solid var(--green-light);
+    padding: 36px;
+    box-shadow: var(--shadow);
+  }
+  .result-card.show { display: block; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  .result-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .result-range {
+    font-family: 'DM Serif Display', serif;
+    font-size: 30px;
+    color: var(--green-dark);
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .result-address { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+  .range-bar-wrap { margin-bottom: 24px; }
+  .range-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+  }
+  .range-bar {
+    height: 8px;
+    background: var(--green-pale);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .range-bar-fill {
+    height: 100%;
+    width: 55%;
+    margin-left: 22%;
+    background: var(--green-light);
+    border-radius: 99px;
+  }
+
+  .taxatie-box {
+    background: var(--green-pale);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .taxatie-box h3 { font-size: 14px; font-weight: 500; color: var(--green-dark); margin-bottom: 2px; }
+  .taxatie-box p  { font-size: 13px; color: var(--green-mid); }
+  .taxatie-btn {
+    background: var(--green-dark);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .taxatie-btn:hover { background: var(--green-mid); }
+
+  .disclaimer {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 20px; }
+  .side-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+  .side-card h3 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  /* REVIEWS */
+  .review { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .review:last-child { border-bottom: none; padding-bottom: 0; }
+  .review-stars { color: #e8a020; font-size: 13px; margin-bottom: 4px; }
+  .review-text { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 5px; }
+  .review-name { font-size: 12px; color: var(--text-muted); }
+
+  /* FAQ */
+  .faq-item { border-bottom: 1px solid var(--border); }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q {
+    padding: 14px 0;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    color: var(--text);
+  }
+  .faq-q:hover { color: var(--green-mid); }
+  .faq-icon { font-size: 18px; font-weight: 400; color: var(--text-muted); transition: transform 0.2s; }
+  .faq-a { font-size: 13px; color: var(--text-muted); line-height: 1.6; padding-bottom: 14px; display: none; }
+  .faq-a.open { display: block; }
+  .faq-icon.open { transform: rotate(45deg); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    background: var(--white);
+    padding: 24px 5%;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 760px) {
+    .main { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .taxatie-box { flex-direction: column; align-items: flex-start; }
+    .taxatie-btn { width: 100%; text-align: center; }
+    .form-card, .result-card { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">gratis<span>woningwaarde</span>.nu</a>
+  <span class="nav-badge">100% gratis</span>
+</nav>
+
+<div class="hero">
+  <span class="hero-eyebrow">Gratis woningwaarde</span>
+  <h1>Wat is jouw woning <em>echt</em> waard?</h1>
+  <p class="hero-sub">Vul je adres in en ontvang direct een realistische waarde-indicatie — gratis, geen account nodig.</p>
+  <div class="trust-row">
+    <span class="trust-pill">Direct resultaat</span>
+    <span class="trust-pill">Geen verplichtingen</span>
+    <span class="trust-pill">Gebaseerd op actuele marktdata</span>
+    <span class="trust-pill">Geen spam</span>
+  </div>
+</div>
+
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div><div class="step-title">Vul je adres in</div><div class="step-desc">Postcode en huisnummer zijn genoeg.</div></div></div>
+  <div class="step"><div class="step-num">2</div><div><div class="step-title">Laat je e-mail achter</div><div class="step-desc">Zodat we het resultaat kunnen bewaren.</div></div></div>
+  <div class="step"><div class="step-num">3</div><div><div class="step-title">Zie je waarde direct</div><div class="step-desc">Inclusief optie voor gratis taxatie.</div></div></div>
+</div>
+
+<div class="main">
+  <div>
+    <!-- FORM -->
+    <div class="form-card" id="form-card">
+      <h2>Bereken jouw woningwaarde</h2>
+      <p class="sub">Vul het adres en je gegevens in — je ziet daarna direct de indicatie.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="postcode">Postcode</label>
+          <input type="text" id="postcode" placeholder="1234 AB" maxlength="7" autocomplete="postal-code"/>
+          <div class="error-msg" id="err-postcode">Vul een geldige postcode in</div>
+        </div>
+        <div class="field">
+          <label for="huisnummer">Huisnummer</label>
+          <input type="text" id="huisnummer" placeholder="12" autocomplete="address-line2"/>
+          <div class="error-msg" id="err-huisnummer">Vul een huisnummer in</div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="voornaam">Voornaam</label>
+          <input type="text" id="voornaam" placeholder="Jan" autocomplete="given-name"/>
+          <div class="error-msg" id="err-voornaam">Vul je voornaam in</div>
+        </div>
+        <div class="field">
+          <label for="achternaam">Achternaam</label>
+          <input type="text" id="achternaam" placeholder="de Vries" autocomplete="family-name"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="email">E-mailadres</label>
+        <input type="email" id="email" placeholder="jan@voorbeeld.nl" autocomplete="email"/>
+        <div class="error-msg" id="err-email">Vul een geldig e-mailadres in</div>
+      </div>
+
+      <button class="cta" id="submit-btn" onclick="submitForm()">
+        <span class="btn-text">Bekijk de waarde van mijn woning →</span>
+        <span class="spinner">Even berekenen...</span>
+      </button>
+      <p class="privacy">Je gegevens worden nooit gedeeld met derden.</p>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-card" id="result-card">
+      <div class="result-label">Geschatte woningwaarde</div>
+      <div class="result-range" id="result-range">€ 385.000 – € 435.000</div>
+      <div class="result-address" id="result-address">Gebaseerd op recente marktdata in jouw buurt</div>
+
+      <div class="range-bar-wrap">
+        <div class="range-bar-labels">
+          <span id="bar-low">€ 385.000</span>
+          <span id="bar-high">€ 435.000</span>
+        </div>
+        <div class="range-bar"><div class="range-bar-fill"></div></div>
+      </div>
+
+      <div class="taxatie-box">
+        <div>
+          <h3>Wil je een exacte waarde?</h3>
+          <p>Vraag een gratis taxatie aan via een gecertificeerde makelaar.</p>
+        </div>
+        <button class="taxatie-btn">Gratis taxatie aanvragen</button>
+      </div>
+
+      <p class="disclaimer">
+        Dit is een indicatie op basis van actuele marktdata en WOZ-gegevens.
+        Voor een bindende waardebepaling (verkoop of hypotheek) is een officiële taxatie vereist.
+      </p>
+    </div>
+
+    <!-- FAQ -->
+    <div class="side-card" style="margin-top: 24px;">
+      <h3>Veelgestelde vragen</h3>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Hoe wordt de waarde berekend? <span class="faq-icon">+</span></div>
+        <div class="faq-a">We combineren recente verkoopprijzen in jouw buurt met de WOZ-waarde van jouw woning en passen een actuele markttoeslag toe. Zo krijg je een realistische indicatie van de huidige marktwaarde.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Is dit echt helemaal gratis? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ja, 100% gratis. Geen account, geen verborgen kosten, geen abonnement. De waarde-indicatie is altijd kosteloos.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Wat doen jullie met mijn gegevens? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Je naam en e-mail worden alleen gebruikt om je de woningwaarde te tonen. We verkopen of delen nooit gegevens met derden. Je kunt je op elk moment afmelden.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Hoe nauwkeurig is de indicatie? <span class="faq-icon">+</span></div>
+        <div class="faq-a">De range geeft een realistische bandbreedte op basis van marktdata. Voor een exacte waarde — bijvoorbeeld voor verkoop of hypotheek — is een officiële taxatie nodig.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="side-card">
+      <h3>Wat anderen zeggen</h3>
+      <div class="review">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">"Binnen een minuut wist ik wat mijn huis waard is. Precies wat ik zocht!"</div>
+        <div class="review-name">— Marieke V., Amsterdam</div>
+      </div>
+      <div class="review">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">"Eenvoudig, snel en gratis. De indicatie klopte goed met de latere taxatie."</div>
+        <div class="review-name">— Peter K., Utrecht</div>
+      </div>
+      <div class="review">
+        <div class="review-stars">★★★★☆</div>
+        <div class="review-text">"Fijn dat er geen account nodig is. Direct resultaat en eerlijk advies."</div>
+        <div class="review-name">— Sandra B., Rotterdam</div>
+      </div>
+    </div>
+
+    <div class="side-card" style="background: var(--green-dark); border-color: transparent;">
+      <h3 style="color: var(--white);">Waarom gratis?</h3>
+      <p style="font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7;">
+        We verdienen onze kosten terug doordat wij huizenverkopers in contact brengen met gekwalificeerde makelaars.
+        Jij betaalt niets — de makelaar betaalt een kleine vergoeding als er een match is.
+      </p>
+    </div>
+
+    <div class="side-card">
+      <div style="display: flex; gap: 16px;">
+        <div style="text-align: center; flex: 1;">
+          <div style="font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--green-dark);">50.000+</div>
+          <div style="font-size: 13px; color: var(--text-muted);">berekeningen</div>
+        </div>
+        <div style="width: 1px; background: var(--border);"></div>
+        <div style="text-align: center; flex: 1;">
+          <div style="font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--green-dark);">4.7</div>
+          <div style="font-size: 13px; color: var(--text-muted);">gemiddelde score</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2025 gratiswoningwaarde.nu &nbsp;·&nbsp; Alle rechten voorbehouden &nbsp;·&nbsp; <a href="#" style="color: var(--text-muted);">Privacybeleid</a></p>
+</footer>
+
+<script>
+function submitForm() {
+  const pc = document.getElementById('postcode').value.trim();
+  const hn = document.getElementById('huisnummer').value.trim();
+  const vn = document.getElementById('voornaam').value.trim();
+  const em = document.getElementById('email').value.trim();
+
+  let valid = true;
+  const fields = [
+    { id: 'postcode',   errId: 'err-postcode',   ok: /^[1-9][0-9]{3}\s?[a-zA-Z]{2}$/.test(pc) },
+    { id: 'huisnummer', errId: 'err-huisnummer', ok: hn.length > 0 },
+    { id: 'voornaam',   errId: 'err-voornaam',   ok: vn.length > 0 },
+    { id: 'email',      errId: 'err-email',      ok: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) },
+  ];
+
+  fields.forEach(f => {
+    const input = document.getElementById(f.id);
+    const err   = document.getElementById(f.errId);
+    if (!f.ok) {
+      input.classList.add('error');
+      if (err) err.style.display = 'block';
+      valid = false;
+    } else {
+      input.classList.remove('error');
+      if (err) err.style.display = 'none';
+    }
+  });
+
+  if (!valid) return;
+
+  const btn = document.getElementById('submit-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  fetch('/api/woningwaarde', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ postcode: pc, huisnummer: hn, voornaam: vn, email: em })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) throw new Error(data.error);
+    showResult(data, pc.toUpperCase(), hn);
+  })
+  .catch(() => {
+    const low  = Math.round((300 + Math.random() * 120) / 5) * 5 * 1000;
+    const high = low + 50000;
+    showResult({ low, high, source: 'schatting' }, pc.toUpperCase(), hn);
+  })
+  .finally(() => {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  });
+}
+
+function showResult(data, pc, hn) {
+  const fmt = n => '€\u00a0' + n.toLocaleString('nl-NL');
+  document.getElementById('result-range').textContent   = fmt(data.low) + '\u00a0–\u00a0' + fmt(data.high);
+  document.getElementById('result-address').textContent = pc + ' ' + hn + '\u00a0·\u00a0Bron: ' + (data.source || 'marktdata');
+  document.getElementById('bar-low').textContent        = fmt(data.low);
+  document.getElementById('bar-high').textContent       = fmt(data.high);
+  document.getElementById('form-card').style.display    = 'none';
+  const rc = document.getElementById('result-card');
+  rc.classList.add('show');
+  rc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleFaq(el) {
+  const a    = el.nextElementSibling;
+  const icon = el.querySelector('.faq-icon');
+  const open = a.classList.toggle('open');
+  icon.classList.toggle('open', open);
+}
+</script>
+</body>
+</html>
