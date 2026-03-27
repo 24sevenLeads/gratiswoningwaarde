@@ -19,11 +19,8 @@ export default async function handler(req, res) {
   try {
     result = await callAltumAI(pc, huisnummer, toevoeging || '');
   } catch (e) {
-    console.warn('Altum AI mislukt:', e.message);
-  }
-
-  if (!result) {
-    result = fallbackEstimate(pc);
+    console.error('Altum AI mislukt:', e.message);
+    return res.status(503).json({ error: 'Waarde kon niet worden opgehaald: ' + e.message });
   }
 
   try {
@@ -55,19 +52,19 @@ async function callAltumAI(postcode, housenumber, houseaddition) {
 
   if (!resp.ok) {
     const err = await resp.text();
-    throw new Error(`Altum AI HTTP ${resp.status}: ${err}`);
+    throw new Error(`HTTP ${resp.status}: ${err}`);
   }
 
   const data = await resp.json();
   const output = data?.Output;
 
   if (!output || typeof output === 'string') {
-    throw new Error(`Altum AI fout: ${output || 'onbekend'}`);
+    throw new Error(output || 'Geen output van Altum AI');
   }
 
   const priceEstimation = parseInt(output.PriceEstimation, 10);
   if (!priceEstimation || priceEstimation < 50000) {
-    throw new Error('Onrealistisch bedrag van Altum AI');
+    throw new Error('Onrealistisch bedrag: ' + output.PriceEstimation);
   }
 
   const { low, high } = parseConfidence(output.Confidence, priceEstimation);
@@ -97,24 +94,6 @@ function parseConfidence(confidence, estimation) {
   return {
     low:  Math.round((estimation - marge) / 5000) * 5000,
     high: Math.round((estimation + marge) / 5000) * 5000,
-  };
-}
-
-function fallbackEstimate(pc) {
-  const prefix = parseInt(pc.substring(0, 2), 10);
-  let base;
-  if (prefix <= 13)      base = 480000;
-  else if (prefix <= 28) base = 380000;
-  else if (prefix <= 37) base = 350000;
-  else if (prefix <= 55) base = 310000;
-  else if (prefix <= 79) base = 290000;
-  else                   base = 270000;
-
-  const marge = Math.round(base * 0.08);
-  return {
-    low:    Math.round((base - marge) / 5000) * 5000,
-    high:   Math.round((base + marge) / 5000) * 5000,
-    source: 'schatting',
   };
 }
 
