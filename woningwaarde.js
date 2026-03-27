@@ -1,45 +1,31 @@
 // api/woningwaarde.js
-// Vercel Serverless Function — scrapet Huispedia, valt terug op WOZwaardeloket
+// Vercel Serverless Function — gebruikt Altum AI AVM voor woningwaarde
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { postcode, huisnummer, voornaam, email } = req.body || {};
+  const { postcode, huisnummer, toevoeging, voornaam, email } = req.body || {};
 
   if (!postcode || !huisnummer || !email) {
     return res.status(400).json({ error: 'Verplichte velden ontbreken' });
   }
 
-  // Normaliseer postcode: "1234 AB" → "1234AB"
   const pc = postcode.replace(/\s/g, '').toUpperCase();
 
   let result = null;
 
-  // ── Stap 1: Huispedia ───────────────────────────────────────────────────────
   try {
-    result = await scrapeHuispedia(pc, huisnummer);
+    result = await callAltumAI(pc, huisnummer, toevoeging || '');
   } catch (e) {
-    console.warn('Huispedia mislukt:', e.message);
+    console.warn('Altum AI mislukt:', e.message);
   }
 
-  // ── Stap 2: WOZwaardeloket als fallback ────────────────────────────────────
-  if (!result) {
-    try {
-      result = await scrapeWOZ(pc, huisnummer);
-    } catch (e) {
-      console.warn('WOZwaardeloket mislukt:', e.message);
-    }
-  }
-
-  // ── Stap 3: Generieke schatting als beide falen ────────────────────────────
   if (!result) {
     result = fallbackEstimate(pc);
-    result.source = 'schatting';
   }
 
-  // ── Lead opslaan (optioneel: stuur e-mail via Resend) ─────────────────────
   try {
     await saveLead({ postcode: pc, huisnummer, voornaam, email, result });
   } catch (e) {
@@ -49,84 +35,80 @@ export default async function handler(req, res) {
   return res.status(200).json(result);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HUISPEDIA SCRAPER
-// Haalt de pagina op en parset de WOZ-waarde + omgevingsdata
-// ─────────────────────────────────────────────────────────────────────────────
-async function scrapeHuispedia(pc, hn) {
-  const url = `https://www.huispedia.nl/woning/${pc}-${encodeURIComponent(hn)}`;
+async function callAltumAI(postcode, housenumber, houseaddition) {
+  const apiKey = process.env.ALTUM_API_KEY;
+  if (!apiKey) throw new Error('ALTUM_API_KEY niet ingesteld');
 
-  const resp = await fetch(url, {
+  const resp = await fetch('https://api.altum.ai/avm', {
+    method: 'POST',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; WoningwaardeBot/1.0)',
-      'Accept': 'text/html',
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
     },
-    signal: AbortSignal.timeout(8000),
+    body: JSON.stringify({
+      postcode,
+      housenumber: String(housenumber),
+      houseaddition: houseaddition || '',
+    }),
+    signal: AbortSignal.timeout(10000),
   });
 
-  if (!resp.ok) throw new Error(`Huispedia HTTP ${resp.status}`);
-
-  const html = await resp.text();
-
-  // Zoek WOZ-waarde in de HTML (Huispedia toont dit als bijv. "€ 320.000")
-  const wozMatch = html.match(/WOZ[^€]*€\s*([\d.,]+)/i);
-  if (!wozMatch) throw new Error('WOZ-waarde niet gevonden in Huispedia HTML');
-
-  const woz = parseEuroString(wozMatch[1]);
-  if (!woz || woz < 50000) throw new Error('WOZ-waarde onrealistisch');
-
-  return berekendRange(woz, 'Huispedia');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// WOZWAARDELOKET SCRAPER (fallback)
-// ─────────────────────────────────────────────────────────────────────────────
-async function scrapeWOZ(pc, hn) {
-  // WOZwaardeloket heeft een publieke JSON API
-  const url = `https://api.wozwaardeloket.nl/wozadressen?postcode=${pc}&huisnummer=${encodeURIComponent(hn)}`;
-
-  const resp = await fetch(url, {
-    headers: { 'Accept': 'application/json' },
-    signal: AbortSignal.timeout(8000),
-  });
-
-  if (!resp.ok) throw new Error(`WOZwaardeloket HTTP ${resp.status}`);
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Altum AI HTTP ${resp.status}: ${err}`);
+  }
 
   const data = await resp.json();
+  const output = data?.Output;
 
-  // Verwacht formaat: [{ wozWaarden: [{ vastgesteldeWaarde: 320000 }] }]
-  const waarde = data?.[0]?.wozWaarden?.[0]?.vastgesteldeWaarde;
-  if (!waarde) throw new Error('Geen WOZ-waarde in response');
+  if (!output || typeof output === 'string') {
+    throw new Error(`Altum AI fout: ${output || 'onbekend'}`);
+  }
 
-  return berekendRange(waarde, 'WOZwaardeloket');
+  const priceEstimation = parseInt(output.PriceEstimation, 10);
+  if (!priceEstimation || priceEstimation < 50000) {
+    throw new Error('Onrealistisch bedrag van Altum AI');
+  }
+
+  const { low, high } = parseConfidence(output.Confidence, priceEstimation);
+
+  return {
+    low,
+    high,
+    estimation: priceEstimation,
+    source: 'Altum AI',
+    address: `${output.Street || ''} ${output.HouseNumber || ''}, ${output.City || ''}`.trim(),
+    houseType: output.HouseType || null,
+    buildYear: output.BuildYear || null,
+    surfaceArea: output.InnerSurfaceArea || null,
+  };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BEREKENING: WOZ → marktwaarde-range
-// WOZ ligt gemiddeld 5-15% onder de werkelijke marktwaarde.
-// We geven een range van ±7% rondom WOZ × 1.10
-// ─────────────────────────────────────────────────────────────────────────────
-function berekendRange(woz, source) {
-  const markt = Math.round(woz * 1.10);          // WOZ → marktschatting
-  const marge = Math.round(markt * 0.07);        // ±7% marge
-  const low   = Math.round((markt - marge) / 5000) * 5000;
-  const high  = Math.round((markt + marge) / 5000) * 5000;
-  return { low, high, woz, source };
+function parseConfidence(confidence, estimation) {
+  if (confidence) {
+    const match = confidence.match(/([\d]+)-([\d]+)/);
+    if (match) {
+      const low  = Math.round(parseInt(match[1], 10) / 5000) * 5000;
+      const high = Math.round(parseInt(match[2], 10) / 5000) * 5000;
+      if (low > 0 && high > low) return { low, high };
+    }
+  }
+  const marge = Math.round(estimation * 0.08);
+  return {
+    low:  Math.round((estimation - marge) / 5000) * 5000,
+    high: Math.round((estimation + marge) / 5000) * 5000,
+  };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FALLBACK: generieke landelijke schatting als beide bronnen falen
-// ─────────────────────────────────────────────────────────────────────────────
 function fallbackEstimate(pc) {
-  // Ruwe schatting op basis van postcode-prefix (eerste 2 cijfers)
   const prefix = parseInt(pc.substring(0, 2), 10);
   let base;
-  if (prefix <= 13)      base = 480000; // Amsterdam
-  else if (prefix <= 28) base = 380000; // Den Haag / Rotterdam
-  else if (prefix <= 37) base = 350000; // Utrecht omgeving
-  else if (prefix <= 55) base = 310000; // Midden-Nederland
-  else if (prefix <= 79) base = 290000; // Oost / Noord
-  else                   base = 270000; // Noord-Nederland
+  if (prefix <= 13)      base = 480000;
+  else if (prefix <= 28) base = 380000;
+  else if (prefix <= 37) base = 350000;
+  else if (prefix <= 55) base = 310000;
+  else if (prefix <= 79) base = 290000;
+  else                   base = 270000;
 
   const marge = Math.round(base * 0.08);
   return {
@@ -136,14 +118,12 @@ function fallbackEstimate(pc) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEAD OPSLAAN via Resend (optioneel — stel RESEND_API_KEY in als env var)
-// ─────────────────────────────────────────────────────────────────────────────
 async function saveLead({ postcode, huisnummer, voornaam, email, result }) {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return; // Geen API key → stilletjes overslaan
+  if (!apiKey) return;
 
-  const TO = process.env.LEAD_EMAIL || 'jouw@email.nl';
+  const to  = process.env.LEAD_EMAIL || 'jouw@email.nl';
+  const fmt = n => '€\u00a0' + n.toLocaleString('nl-NL');
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -153,25 +133,21 @@ async function saveLead({ postcode, huisnummer, voornaam, email, result }) {
     },
     body: JSON.stringify({
       from: 'leads@gratiswoningwaarde.nu',
-      to: TO,
+      to,
       subject: `Nieuwe lead: ${voornaam || email} – ${postcode} ${huisnummer}`,
       html: `
-        <h2>Nieuwe woningwaarde-aanvraag</h2>
-        <table>
-          <tr><td><b>Naam</b></td><td>${voornaam || '–'}</td></tr>
-          <tr><td><b>E-mail</b></td><td>${email}</td></tr>
-          <tr><td><b>Adres</b></td><td>${postcode} ${huisnummer}</td></tr>
-          <tr><td><b>Waarde-indicatie</b></td><td>€${result.low.toLocaleString('nl-NL')} – €${result.high.toLocaleString('nl-NL')}</td></tr>
-          <tr><td><b>Bron</b></td><td>${result.source}</td></tr>
+        <h2 style="font-family:sans-serif">Nieuwe woningwaarde-aanvraag</h2>
+        <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse">
+          <tr><td style="padding:6px 16px 6px 0;color:#666">Naam</td><td><b>${voornaam || '–'}</b></td></tr>
+          <tr><td style="padding:6px 16px 6px 0;color:#666">E-mail</td><td><b>${email}</b></td></tr>
+          <tr><td style="padding:6px 16px 6px 0;color:#666">Adres</td><td><b>${postcode} ${huisnummer}</b></td></tr>
+          <tr><td style="padding:6px 16px 6px 0;color:#666">Waarde-indicatie</td><td><b>${fmt(result.low)} – ${fmt(result.high)}</b></td></tr>
+          ${result.houseType   ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Woningtype</td><td>${result.houseType}</td></tr>` : ''}
+          ${result.buildYear   ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Bouwjaar</td><td>${result.buildYear}</td></tr>` : ''}
+          ${result.surfaceArea ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Oppervlakte</td><td>${result.surfaceArea} m²</td></tr>` : ''}
+          <tr><td style="padding:6px 16px 6px 0;color:#666">Bron</td><td>${result.source}</td></tr>
         </table>
       `,
     }),
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: parse "320.000" of "320,000" naar integer
-// ─────────────────────────────────────────────────────────────────────────────
-function parseEuroString(str) {
-  return parseInt(str.replace(/[.,]/g, '').replace(/\D/g, ''), 10) || null;
 }
