@@ -447,6 +447,7 @@
         <span class="spinner">Even berekenen...</span>
       </button>
       <p class="privacy">Je gegevens worden nooit gedeeld met derden.</p>
+      <p id="api-error" style="display:none;color:#a32d2d;font-size:13px;margin-top:12px;text-align:center;"></p>
     </div>
 
     <!-- RESULT -->
@@ -592,7 +593,7 @@ function submitForm() {
     if (data.error) throw new Error(data.error);
     showResult(data, pc.toUpperCase(), hn);
   })
-  .catch(() => {
+
     const low  = Math.round((300 + Math.random() * 120) / 5) * 5 * 1000;
     const high = low + 50000;
     showResult({ low, high, source: 'schatting' }, pc.toUpperCase(), hn);
