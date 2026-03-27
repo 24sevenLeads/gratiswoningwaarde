@@ -605,12 +605,13 @@ function submitForm() {
 }
 
 function showResult(data, pc, hn) {
-  const fmt = n => '€\u00a0' + n.toLocaleString('nl-NL');
-  document.getElementById('result-range').textContent   = fmt(data.low) + '\u00a0–\u00a0' + fmt(data.high);
-  document.getElementById('result-address').textContent = pc + ' ' + hn + '\u00a0·\u00a0Bron: ' + (data.source || 'marktdata');
-  document.getElementById('bar-low').textContent        = fmt(data.low);
-  document.getElementById('bar-high').textContent       = fmt(data.high);
-  document.getElementById('form-card').style.display    = 'none';
+function showResult(data, pc, hn) {
+  const fmt = n => '€ ' + n.toLocaleString('nl-NL');
+  document.getElementById('result-range').textContent   = fmt(data.woz || data.low);
+  const adres = data.straat ? data.straat + (data.stad ? ', ' + data.stad : '') : pc + ' ' + hn;
+  document.getElementById('result-address').textContent = adres + ' · Bron: ' + (data.source || 'marktdata');
+  document.getElementById('bar-low').textContent        = fmt(data.woz || data.low);
+  document.getElementById('bar-high').textContent       = '';
   const rc = document.getElementById('result-card');
   rc.classList.add('show');
   rc.scrollIntoView({ behavior: 'smooth', block: 'start' });
