@@ -593,10 +593,10 @@ function submitForm() {
     if (data.error) throw new Error(data.error);
     showResult(data, pc.toUpperCase(), hn);
   })
-
-    const low  = Math.round((300 + Math.random() * 120) / 5) * 5 * 1000;
-    const high = low + 50000;
-    showResult({ low, high, source: 'schatting' }, pc.toUpperCase(), hn);
+  .catch(err => {
+    const errEl = document.getElementById('api-error');
+    errEl.textContent = err.message || 'Er ging iets mis. Probeer het opnieuw.';
+    errEl.style.display = 'block';
   })
   .finally(() => {
     btn.classList.remove('loading');
