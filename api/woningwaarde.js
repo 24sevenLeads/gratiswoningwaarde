@@ -1,6 +1,3 @@
-// api/woningwaarde.js
-// Vercel Serverless Function — gebruikt Altum AI AVM voor woningwaarde
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,9 +14,9 @@ export default async function handler(req, res) {
   let result = null;
 
   try {
-    result = await callAltumAI(pc, huisnummer, toevoeging || '');
+    result = await callAltumWOZ(pc, huisnummer, toevoeging || '');
   } catch (e) {
-    console.error('Altum AI mislukt:', e.message);
+    console.error('Altum AI WOZ mislukt:', e.message);
     return res.status(503).json({ error: 'Waarde kon niet worden opgehaald: ' + e.message });
   }
 
@@ -32,11 +29,11 @@ export default async function handler(req, res) {
   return res.status(200).json(result);
 }
 
-async function callAltumAI(postcode, housenumber, houseaddition) {
+async function callAltumWOZ(postcode, housenumber, houseaddition) {
   const apiKey = process.env.ALTUM_API_KEY;
   if (!apiKey) throw new Error('ALTUM_API_KEY niet ingesteld');
 
-  const resp = await fetch('https://api.altum.ai/avm', {
+  const resp = await fetch('https://api.altum.ai/woz', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -45,7 +42,9 @@ async function callAltumAI(postcode, housenumber, houseaddition) {
     body: JSON.stringify({
       postcode,
       housenumber: String(housenumber),
-      houseaddition: houseaddition || '',
+      addition: houseaddition || '',
+      index: 1,
+      cache: 1,
     }),
     signal: AbortSignal.timeout(10000),
   });
@@ -58,42 +57,29 @@ async function callAltumAI(postcode, housenumber, houseaddition) {
   const data = await resp.json();
   const output = data?.Output;
 
-  if (!output || typeof output === 'string') {
-    throw new Error(output || 'Geen output van Altum AI');
-  }
+  if (!output) throw new Error('Geen output van Altum AI');
 
-  const priceEstimation = parseInt(output.PriceEstimation, 10);
-  if (!priceEstimation || priceEstimation < 50000) {
-    throw new Error('Onrealistisch bedrag: ' + output.PriceEstimation);
-  }
+  const wozValues = output.wozvalue;
+  if (!wozValues?.length) throw new Error('Geen WOZ-waarden gevonden voor dit adres');
 
-  const { low, high } = parseConfidence(output.Confidence, priceEstimation);
+  const latest = wozValues[0];
+  const woz = parseInt(latest.IndexedValue || latest.Value, 10);
+  if (!woz || woz < 50000) throw new Error('WOZ-waarde onrealistisch: ' + woz);
+
+  // Berekening: WOZ x 1.19, dan -5% / +5%
+  const midden = Math.round(woz * 1.19);
+  const low    = Math.round((midden * 0.95) / 5000) * 5000;
+  const high   = Math.round((midden * 1.05) / 5000) * 5000;
 
   return {
     low,
     high,
-    estimation: priceEstimation,
-    source: 'Altum AI',
-    address: `${output.Street || ''} ${output.HouseNumber || ''}, ${output.City || ''}`.trim(),
-    houseType: output.HouseType || null,
-    buildYear: output.BuildYear || null,
-    surfaceArea: output.InnerSurfaceArea || null,
-  };
-}
-
-function parseConfidence(confidence, estimation) {
-  if (confidence) {
-    const match = confidence.match(/([\d]+)-([\d]+)/);
-    if (match) {
-      const low  = Math.round(parseInt(match[1], 10) / 5000) * 5000;
-      const high = Math.round(parseInt(match[2], 10) / 5000) * 5000;
-      if (low > 0 && high > low) return { low, high };
-    }
-  }
-  const marge = Math.round(estimation * 0.08);
-  return {
-    low:  Math.round((estimation - marge) / 5000) * 5000,
-    high: Math.round((estimation + marge) / 5000) * 5000,
+    woz,
+    source: 'Altum AI / WOZwaardeloket',
+    straat: output.Street   || null,
+    stad:   output.City     || null,
+    bouwjaar:  output.BuildYear        || null,
+    oppervlak: output.OuterSurfaceArea || null,
   };
 }
 
@@ -120,11 +106,10 @@ async function saveLead({ postcode, huisnummer, voornaam, email, result }) {
           <tr><td style="padding:6px 16px 6px 0;color:#666">Naam</td><td><b>${voornaam || '–'}</b></td></tr>
           <tr><td style="padding:6px 16px 6px 0;color:#666">E-mail</td><td><b>${email}</b></td></tr>
           <tr><td style="padding:6px 16px 6px 0;color:#666">Adres</td><td><b>${postcode} ${huisnummer}</b></td></tr>
+          <tr><td style="padding:6px 16px 6px 0;color:#666">WOZ-waarde</td><td>${fmt(result.woz)}</td></tr>
           <tr><td style="padding:6px 16px 6px 0;color:#666">Waarde-indicatie</td><td><b>${fmt(result.low)} – ${fmt(result.high)}</b></td></tr>
-          ${result.houseType   ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Woningtype</td><td>${result.houseType}</td></tr>` : ''}
-          ${result.buildYear   ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Bouwjaar</td><td>${result.buildYear}</td></tr>` : ''}
-          ${result.surfaceArea ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Oppervlakte</td><td>${result.surfaceArea} m²</td></tr>` : ''}
-          <tr><td style="padding:6px 16px 6px 0;color:#666">Bron</td><td>${result.source}</td></tr>
+          ${result.bouwjaar  ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Bouwjaar</td><td>${result.bouwjaar}</td></tr>` : ''}
+          ${result.oppervlak ? `<tr><td style="padding:6px 16px 6px 0;color:#666">Oppervlakte</td><td>${result.oppervlak} m²</td></tr>` : ''}
         </table>
       `,
     }),
